@@ -1,5 +1,5 @@
 #include "hunav_agent_manager/agent_manager.hpp"
-
+#include "hunav_agent_manager/log_throttle.hpp"
 namespace hunav
 {
 
@@ -60,7 +60,7 @@ namespace hunav
     }
     else
     {
-      //std::cout<<"robot is in line of sight";
+      //LOG_THROTTLED("los_agent_" + std::to_string(id), 1000,"robot is in line of sight of human: " << id);
       return true;
     }
   }
@@ -88,6 +88,7 @@ namespace hunav
     //std::cout<<"Robot Distance: "<<squared_dist<<std::endl;
     if (sqrt(squared_dist) <= (dist))
     {
+      //LOG_THROTTLED("robot_near_agent_" + std::to_string(id), 1000,"robot is near human: " << id);
       return true;
     }
     else
@@ -111,13 +112,15 @@ namespace hunav
     if (robot_.sfmAgent.velocity.getX()<0.1 && robot_.sfmAgent.velocity.getY()<0.1){
       return false;
     }
+    //LOG_THROTTLED("robot_moved_agent_" + std::to_string(id), 1000,"robot has moved, seen by human, LOG THROTTLE: " << id);
     return true;
     
   }
   
   void AgentManager::lookAtRobot(int id)
   {
-    agents_[id].behavior_state = 1;
+    agents_[id].behavior_state = 3;
+    //LOG_THROTTLED("look_at_robot_agent_" + std::to_string(id), 1000,"Agent " << id << " looking at the robot");
     std::lock_guard<std::mutex> guard(mutex_);
     // Robot position
     float rx = robot_.sfmAgent.position.getX();
@@ -154,8 +157,8 @@ namespace hunav
 
     std::lock_guard<std::mutex> guard(mutex_);
 
-    agents_[id].behavior_state = 1;
-
+    agents_[id].behavior_state = 4;
+    LOG_THROTTLED("follow_robot_agent_" + std::to_string(id+1), 1000,"Agent " << id+1 << " following the robot");
     // Robot position
     float rx = robot_.sfmAgent.position.getX();
     float ry = robot_.sfmAgent.position.getY();
@@ -165,8 +168,7 @@ namespace hunav
     // stop and look at the robot
     if (dist <= 1.5)  // 1.5
     {
-      // printf("Agent %i stoping and looking at the robot! dist: %.2f\n", id,
-      // dist);
+      //printf("Agent %i stoping and looking at the robot! dist: %.2f\n", id, dist);
       // Agent position
       float ax = agents_[id].sfmAgent.position.getX();
       float ay = agents_[id].sfmAgent.position.getY();
@@ -189,7 +191,7 @@ namespace hunav
       // change agent vel according to the proximity of the robot
       // move slowly when close
       float ini_desired_vel = agents_[id].sfmAgent.desiredVelocity;
-      agents_[id].sfmAgent.desiredVelocity = 1.8 * (dist / max_dist_view_);
+      agents_[id].sfmAgent.desiredVelocity = ini_desired_vel * (dist / max_dist_view_);
       // recompute forces
       computeForces(id);
       // update position
@@ -206,13 +208,13 @@ namespace hunav
 
     std::lock_guard<std::mutex> guard(mutex_);
     
-    agents_[id].behavior_state = 1;
-
+    agents_[id].behavior_state = 5;
+    //LOG_THROTTLED("follow_human_agent_" + std::to_string(id), 1000,"Agent " << id << " following human: " << target_id);
     // human position
     float rx = agents_[target_id].sfmAgent.position.getX();
     float ry =  agents_[target_id].sfmAgent.position.getY();
     float dist = sqrt(SquaredDistance(id,target_id));
-
+    //std::cout<<"Follow Human: Agent "<<id<<" Target "<<target_id<<" Dist "<<dist<<std::endl;
     // if the agent is close to the robot,
     // stop and look at the robot
     if (dist <= 1.5)  // 1.5
@@ -238,11 +240,11 @@ namespace hunav
       g.radius = agents_[target_id].sfmAgent.radius;
       agents_[id].sfmAgent.goals.push_front(g);
       int num_goals = agents_[id].sfmAgent.goals.size();
-      std::cout<<"-------------------"<<agents_[id].sfmAgent.goals.size()<<std::endl;
+      //std::cout<<"-------------------"<<agents_[id].sfmAgent.goals.size()<<std::endl;
       // change agent vel according to the proximity of the robot
       // move slowly when close
       float ini_desired_vel = agents_[id].sfmAgent.desiredVelocity;
-      agents_[id].sfmAgent.desiredVelocity = 1.8 * (dist / max_dist_view_);
+      agents_[id].sfmAgent.desiredVelocity = ini_desired_vel * (dist / max_dist_view_);
       //std::cout<<"-------------------"<<agents_[id].sfmAgent.desiredVelocity<<std::endl;
       // recompute forces
       computeForces(id);
@@ -254,10 +256,10 @@ namespace hunav
       if(agents_[id].sfmAgent.goals.size() == num_goals)
       { 
         agents_[id].sfmAgent.goals.pop_front();
-        std::cout<<"-------------------"<<agents_[id].sfmAgent.goals.size()<<std::endl;
+        //std::cout<<"-------------------"<<agents_[id].sfmAgent.goals.size()<<std::endl;
       }
       agents_[id].sfmAgent.desiredVelocity = ini_desired_vel;
-      std::cout<<"-----------Follow Human--------"<<agents_[id].sfmAgent.desiredVelocity<<std::endl;
+      // std::cout<<"-----------Follow Human--------"<<agents_[id].sfmAgent.desiredVelocity<<std::endl;
     }
   }
 
@@ -265,8 +267,8 @@ namespace hunav
   {
 
     std::lock_guard<std::mutex> guard(mutex_);
-    agents_[id].behavior_state = 1;
-
+    agents_[id].behavior_state = 6;
+    //LOG_THROTTLED("block_robot_agent_" + std::to_string(id), 1000,"Agent " << id << " blocking the robot");
     // Robot position
     float rx = robot_.sfmAgent.position.getX();
     float ry = robot_.sfmAgent.position.getY();
@@ -316,13 +318,18 @@ namespace hunav
     // restore the goals and the velocity
     agents_[id].sfmAgent.goals = gls;
     agents_[id].sfmAgent.desiredVelocity = ini_desired_vel;
-    std::cout<<"BTFunctions.Block Robot Ticking agent"<<std::endl;
+    //std::cout<<"BTFunctions.Block Robot Ticking agent"<<std::endl;
   }
   
   void AgentManager::makeGesture(int id, int gesture = 1)
   {
     std::lock_guard<std::mutex> guard(mutex_);
-    //std::cout<< "Agent " << id << " is making gesture " << gesture << std::endl;
+    if (gesture > 0)
+    {
+      //LOG_THROTTLED("make_gesture_agent_" + std::to_string(id), 1000,"Agent " << id << " is making gesture " << gesture);
+    }
+
+
     agents_[id].gesture = gesture; 
   }
 
@@ -335,8 +342,9 @@ namespace hunav
   void AgentManager::givewaytoRobot(int id, double dt)
   {
     std::lock_guard<std::mutex> guard(mutex_);
-    if (agents_[id].behavior_state!=2){
-      agents_[id].behavior_state = 2;
+    //LOG_THROTTLED("give_way_to_robot_agent_" + std::to_string(id), 1000,"Agent " << id << " giving way to the robot");
+    if (agents_[id].behavior_state!=7){
+      agents_[id].behavior_state = 7;
 
       //robot position
       float rx = robot_.sfmAgent.position.getX();
@@ -370,8 +378,8 @@ namespace hunav
   {
     std::lock_guard<std::mutex> guard(mutex_);
 
-    agents_[id].behavior_state = 1;
-
+    agents_[id].behavior_state = 8;
+    //LOG_THROTTLED("avoid_robot_agent_" + std::to_string(id), 1000,"Agent " << id << " avoiding the robot");
     // we decrease the maximum velocity
     double init_vel = agents_[id].sfmAgent.desiredVelocity;
     agents_[id].sfmAgent.desiredVelocity = 0.6;
@@ -433,15 +441,15 @@ namespace hunav
 
   bool AgentManager::humanSays(int id,int target_id,int msg){
     std::lock_guard<std::mutex> guard(mutex_);
-    //std::cout<<"Pinging Human Says"<<"\n";
     if (agents_[target_id].gesture == msg){
+      //LOG_THROTTLED("human_says_agent_" + std::to_string(id), 1000,"Agent " << target_id << " said message " << msg << " observed by " << id);
       return true;
     }
     else
       return false;
   }
 
-
+// ---------------------------------------------------------------
   bool AgentManager::updateGoal(int id)
   {
     std::lock_guard<std::mutex> guard(mutex_);
@@ -461,12 +469,26 @@ namespace hunav
     return true;
   }
   
-  void AgentManager::updatePosition(int id, double dt)
+  void AgentManager::regularnavigation(int id, double dt)
   {
     std::lock_guard<std::mutex> guard(mutex_);
     agents_[id].behavior_state = 0;
+    LOG_THROTTLED("regular_navigation_agent_" + std::to_string(id+1), 1000,"Agent " << id+1 << " regular navigation");
+    //computeForces(id);
+    // update position
+    //sfm::SFM.updatePosition(agents_[id].sfmAgent, dt);
+    
+  }
+
+  void AgentManager::updatePosition(int id, double dt)
+  {
+    std::lock_guard<std::mutex> guard(mutex_);
+    
+    //agents_[id].behavior_state = 0;
+    
     // check if pause_nav is true for this agent and pause navigation accordingly
     if(agents_[id].pause_nav==false){
+        //std::cout<<"id:"<<id<<" Velocity:"<<agents_[id].sfmAgent.desiredVelocity<<std::endl;
         sfm::SFM.updatePosition(agents_[id].sfmAgent, dt);
     }
   }

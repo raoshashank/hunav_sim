@@ -1,4 +1,5 @@
 #include "hunav_agent_manager/bt_functions.hpp"
+#include "hunav_agent_manager/log_throttle.hpp"
 
 namespace hunav
 {
@@ -64,6 +65,8 @@ namespace hunav
     ////std::cout << "BTfunctions.robotSays. Message: " << msg.value() << std::endl;
     if (agent_manager_.humanSays(id,target_id,message)){
       //std::cout << "BTfunctions.humanSays. Message: " << message << std::endl;
+      LOG_THROTTLED("human_says_agent_" + std::to_string(id+1), 1000,
+              "Agent " << std::to_string(target_id+1) << " said message " << std::to_string(message) << " observed by " << std::to_string(id+1));
       return BT::NodeStatus::SUCCESS;
     }
     else{
@@ -90,10 +93,11 @@ namespace hunav
 
     int id = idmsg.value();
     double dist = dmsg.value();
-    //std::cout << "BTfunctions.robotVisible. Ticking agent: " << id << std::endl;
+    //std::cout << "BTfunctions.robotVisible. Ticking agent: " << std::to_string(id) << std::endl;
     if (agent_manager_.isRobotVisible(id, dist, 4.188))//M_PI / 2.0 + 0.17))
     {
-      //std::cout << "RobotVisible" << std::endl;
+      LOG_THROTTLED("robot_visible_agent_" + std::to_string(id+1), 1000,
+              "robot is visible to human: " << std::to_string(id+1));
       return BT::NodeStatus::SUCCESS;
     }
     else
@@ -120,10 +124,12 @@ namespace hunav
 
     int id = idmsg.value();
     double dist = dmsg.value();
-    ////std::cout << "BTfunctions.robotVisible. Ticking agent: " << id << std::endl;
+    ////std::cout << "BTfunctions.robotVisible. Ticking agent: " << std::to_string(id) << std::endl;
     if (agent_manager_.isRobotNearby(id, dist))
     {
       //std::cout << "BTfunctions.robotVisible. Returning success" << std::endl;
+      LOG_THROTTLED("robot_nearby_agent_" + std::to_string(id+1), 1000,
+              "robot is near human: " << std::to_string(id+1));
       return BT::NodeStatus::SUCCESS;
     }
     else
@@ -152,16 +158,18 @@ namespace hunav
 
     int id = idmsg.value();
     double dist = dmsg.value();
-    ////std::cout << "BTfunctions.robotVisible. Ticking agent: " << id << std::endl;
-    if (agent_manager_.isRobotVisible(id, dist, 0.5))
+    ////std::cout << "BTfunctions.robotVisible. Ticking agent: " << std::to_string(id) << std::endl;
+    if (agent_manager_.isRobotVisible(id, 1.0, 0.7))
     {
       //std::cout << "BTfunctions.robotBlocking. Returning success" << std::endl;
-      //std::cout << "Alert!!! the robot is blocking agent: " << id << std::endl;
+      //std::cout << "Alert!!! the robot is blocking agent: " << std::to_string(id) << std::endl;
+      LOG_THROTTLED("robot_blocking_agent_" + std::to_string(id+1), 1000,
+              "robot is blocking human: " << std::to_string(id+1));
       return BT::NodeStatus::SUCCESS;
     }
     else
     {
-      //std::cout << "Alert!!! the robot is NOT blocking agent: " << id << std::endl;
+      //std::cout << "Alert!!! the robot is NOT blocking agent: " << std::to_string(id) << std::endl;
       return BT::NodeStatus::FAILURE;
     }
   }
@@ -177,12 +185,12 @@ namespace hunav
     int id = msg.value();
     if (agent_manager_.goalReached(id))
     {
-      //std::cout << "BTfunctions.GoalReached. agent: " << id << " Goal Reached!" << std::endl;
+      //std::cout << "BTfunctions.GoalReached. agent: " << std::to_string(id) << " Goal Reached!" << std::endl;
       return BT::NodeStatus::SUCCESS;
     }
     else
     {
-      ////std::cout << "BTfunctions.GoalReached. agent: " << id << " ********Goal NOT REACHED *******"<< std::endl;
+      ////std::cout << "BTfunctions.GoalReached. agent: " << std::to_string(id) << " ********Goal NOT REACHED *******"<< std::endl;
       return BT::NodeStatus::FAILURE;
     }
   }
@@ -199,12 +207,12 @@ namespace hunav
     int id = msg.value();
     if (agent_manager_.updateGoal(id))
     {
-      ////std::cout << "BTfunctions.UpdateGoal. agent: " << id << " Goal Updated!" << std::endl;
+      ////std::cout << "BTfunctions.UpdateGoal. agent: " << std::to_string(id) << " Goal Updated!" << std::endl;
       return BT::NodeStatus::SUCCESS;
     }
     else
     {
-      ////std::cout << "BTfunctions.UpdateGoal. agent: " << id << " Goal UPDATE FAIL!" << std::endl;
+      ////std::cout << "BTfunctions.UpdateGoal. agent: " << std::to_string(id) << " Goal UPDATE FAIL!" << std::endl;
       return BT::NodeStatus::FAILURE;
     }
   }
@@ -229,6 +237,8 @@ namespace hunav
     double message = gmsg.value();
     if(message!=0){
     //std::cout << "BTfunctions.makeGesture. Messaging: " << message << std::endl;
+    LOG_THROTTLED("make_gesture_agent_" + std::to_string(id+1), 1000,
+              "Agent " << std::to_string(id+1) << " making gesture " << message);
     }
     agent_manager_.makeGesture(id,message);
     return BT::NodeStatus::SUCCESS;
@@ -255,7 +265,8 @@ namespace hunav
     double dt = msg2.value();
     
     // Update SFM model position
-    //std::cout << "BTfunctions.RegularNav. Ticking agent" << id <<":  "<< dt << std::endl;
+    //std::cout << "BTfunctions.RegularNav. Ticking agent"  << std::to_string(id)  <<":  "<< dt << std::endl;
+    agent_manager_.regularnavigation(id, dt);
     agent_manager_.updatePosition(id, dt); //update the position of an agent in the simulator
 
     
@@ -274,11 +285,13 @@ namespace hunav
     int id = msg.value();
     // stop the agent and just look at the robot (change the agent orientation)
     if(agent_manager_.hasRobotMoved(id)){
-      //std::cout<< "ROBOT MOVED!" << id << std::endl;
+      //std::cout<< "ROBOT MOVED!" << std::to_string(id) << std::endl;
+      LOG_THROTTLED("robot_moved_agent_" + std::to_string(id+1), 1000,
+              "robot has moved, seen by human "  << std::to_string(id+1) );
       return BT::NodeStatus::SUCCESS;
     }
     else{
-      //std::cout<< "ROBOT STAYING STILL" << id << std::endl;
+      //std::cout<< "ROBOT STAYING STILL" << std::to_string(id) << std::endl;
       return BT::NodeStatus::FAILURE;
     }
     
@@ -294,7 +307,10 @@ namespace hunav
       throw BT::RuntimeError("lookAtRobot. missing required input [agent_id]: ",
                              msg.error());
     }
+    
     int id = msg.value();
+    LOG_THROTTLED("look_at_robot_agent_" + std::to_string(msg.value()), 1000,
+              "Agent " << std::to_string(id+1) << " is looking at the robot");
     // stop the agent and just look at the robot (change the agent orientation)
     agent_manager_.lookAtRobot(id);
     return BT::NodeStatus::SUCCESS;
@@ -316,7 +332,9 @@ namespace hunav
     }
     int id = msg.value();
     double dt = msg2.value();
-    //std::cout<< "BTfunctions.followRobot. Ticking agent" << id << std::endl;
+    //std::cout<< "BTfunctions.followRobot. Ticking agent" << std::to_string(id) << std::endl;
+    // LOG_THROTTLED("follow_robot_agent_" + std::to_string(id), 1000,
+              // "Agent " << std::to_string(id) << " is following the robot");
     agent_manager_.followRobot(id, dt);
     return BT::NodeStatus::SUCCESS;
   }
@@ -343,7 +361,9 @@ namespace hunav
     int id = msg.value();
     int target_id = targetmsg.value();
     double dt = msg2.value();
-    //std::cout<< "BTfunctions.followRobot. Ticking agent" << id << std::endl;
+    //std::cout<< "BTfunctions.followRobot. Ticking agent" << std::to_string(id) << std::endl;
+    LOG_THROTTLED("follow_human_agent_" + std::to_string(id+1), 1000,
+              "Agent " << std::to_string(id+1) << " is following human: " << std::to_string(target_id+1));
     agent_manager_.followHuman(id,target_id, dt);
     return BT::NodeStatus::SUCCESS;
   }
@@ -363,7 +383,9 @@ namespace hunav
     }
     int id = msg.value();
     double dt = msg2.value();
-    //std::cout<< "BTfunctions.avoidRobot. Ticking agent" << id << std::endl;
+    //std::cout<< "BTfunctions.avoidRobot. Ticking agent" << std::to_string(id) << std::endl;
+    LOG_THROTTLED("avoid_robot_agent_" + std::to_string(id+1), 1000,
+              "Agent " << std::to_string(id+1) << " is avoiding the robot");
     agent_manager_.avoidRobot(id, dt);
     return BT::NodeStatus::SUCCESS;
   }
@@ -384,7 +406,9 @@ namespace hunav
     }
     int id = msg.value();
     double dt = msg2.value();
-    //std::cout<< "BTfunctions.givewayRobot. Ticking agent" << id << std::endl;
+    //std::cout<< "BTfunctions.givewayRobot. Ticking agent" << std::to_string(id) << std::endl;
+    LOG_THROTTLED("give_way_to_robot_agent_" + std::to_string(id+1), 1000,
+              "Agent " << std::to_string(id+1) << " is giving way to the robot");
     agent_manager_.givewaytoRobot(id, dt);
     return BT::NodeStatus::SUCCESS;
   }
@@ -405,7 +429,9 @@ namespace hunav
     }
     int id = msg.value();
     double dt = msg2.value();
-    //std::cout<< "BTfunctions.blockRobot. Ticking agent" << id << std::endl;
+    //std::cout<< "BTfunctions.blockRobot. Ticking agent" << std::to_string(id) << std::endl;
+    LOG_THROTTLED("block_robot_agent_" + std::to_string(id+1), 1000,
+              "Agent " << std::to_string(id+1) << " is blocking the robot");
     agent_manager_.blockRobot(id, dt);
     return BT::NodeStatus::SUCCESS;
   }

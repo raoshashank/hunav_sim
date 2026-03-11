@@ -105,6 +105,7 @@ public:
    * @param id identifier of the agent
    * @param dt time to compute the agent's movement
    */
+  void regularnavigation(int id, double dt);
   void updatePosition(int id, double dt);
   /**
    * @brief build a Agents msg based on the info of the sfm_agents_
