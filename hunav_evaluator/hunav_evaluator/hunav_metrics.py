@@ -113,6 +113,8 @@ def avg_closest_person(agents, robot):
     for i in range(len(robot)):
         min_dist = 10000 
         for agent in agents[i].agents:
+            #print(robot[i].position)
+            #print(robot[i])
             d = euclidean_distance(robot[i].position, agent.position) - robot[i].radius - agent.radius
             if(d < min_dist):
                 min_dist = d
@@ -219,7 +221,7 @@ def group_space_intrusions(agents, robot, k):
         min_dist = 10000
         for id in group_ids:
             group_center = get_group_center(agents[i].agents, id, d)
-            dist = euclidean_distance(robot[i].position, group_center.position) - robot[i].radius
+            dist = euclidean_distance(robot[i].position, group_center) - robot[i].radius
             if dist < min_dist:
                 min_dist = dist
         indicator = indicator_function(min_dist, k)
